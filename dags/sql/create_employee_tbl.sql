@@ -1,3 +1,5 @@
+drop table "Employees", "Employees_temp";
+
 create table "Employees"
 (
     "Serial Number" numeric not null
@@ -12,7 +14,7 @@ create table "Employees"
 create table "Employees_temp"
 (
     "Serial Number" numeric not null
- constraint employees_pk
+ constraint employees_temp_pk
             primary key,
     "Company Name" text,
     "Employee Markme" text,
