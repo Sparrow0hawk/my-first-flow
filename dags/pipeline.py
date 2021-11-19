@@ -73,6 +73,18 @@ def etl_pipeline():
             )
         conn.commit()
 
+    check_employees = SQLCheckOperator(
+        task_id="Check_employees_tbl",
+        conn_id="postgres_default",
+        sql='SELECT count(*) FROM public."Employees"',
+    )
+
+    check_employees_temp = SQLCheckOperator(
+        task_id="Check_employees_temp_tbl",
+        conn_id="postgres_default",
+        sql='SELECT count(*) FROM public."Employees_temp"',
+    )
+
     @task
     def merge_data():
         query = """
