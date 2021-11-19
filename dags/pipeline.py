@@ -49,30 +49,27 @@ def etl_pipeline():
 
     @task
     def get_data():
+        import requests
+
         url = "https://raw.githubusercontent.com/apache/airflow/main/docs/apache-airflow/pipeline_example.csv"
 
-        response = requests.request("GET", url)
+        data_path = "/tmp/employees.csv"
 
-        with open("/usr/local/airflow/dags/files/employees.csv", "w") as file:
-            for row in response.text.split("\n"):
-                file.write(row)
+        with requests.get(url, stream=True) as req:
+            req.raise_for_status()
+            with open(data_path, "wb") as file:
+                for chunk in req.iter_content(chunk_size=1024):
+                    if chunk:
+                        file.write(chunk)
 
-        postgres_hook = PostgresHook(postgres_conn_id="LOCAL")
+        postgres_hook = PostgresHook(postgres_conn_id="postgres_default")
         conn = postgres_hook.get_conn()
         cur = conn.cursor()
 
-        with open("/usr/local/airflow/dags/files/employees.csv", "r") as file:
-            cur.copy_from(
-                f,
-                "Employees_temp",
-                columns=[
-                    "Serial Number",
-                    "Company Name",
-                    "Employee Markme",
-                    "Description",
-                    "Leave",
-                ],
-                sep=",",
+        with open(data_path, "r") as file:
+            cur.copy_expert(
+                "COPY \"Employees_temp\" FROM stdin WITH CSV HEADER DELIMITER AS ','",
+                file,
             )
         conn.commit()
 
