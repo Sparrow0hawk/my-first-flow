@@ -40,7 +40,7 @@ def etl_pipeline():
             return 0
 
     setup_database = PostgresOperator(
-        task_id="create_employees",
+        task_id="setup_database",
         postgres_conn_id="postgres_default",
         sql="sql/create_employee_tbl.sql",
     )
