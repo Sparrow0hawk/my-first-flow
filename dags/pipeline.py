@@ -13,6 +13,31 @@ from airflow.providers.postgres.operators.postgres import PostgresOperator
     dagrun_timeout=timedelta(minutes=60),
 )
 def etl_pipeline():
+    @task
+    def create_connection():
+
+        session = settings.Session()  # get the session
+
+        session_check = (
+            session.query(Connection).filter_by(conn_id="postgres_default") is not None
+        )
+
+        if not session_check:
+
+            c = Connection(
+                conn_id="postgres_default",
+                conn_type="postgres",
+                host="postgres",
+                login="airflow",
+                password="airflow",
+            )
+
+            session.add(c)
+            session.commit()
+
+        else:
+            logging.info("Connection already exists")
+            return 0
 
     setup_database = PostgresOperator(
         task_id="create_employees",
