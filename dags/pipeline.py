@@ -1,10 +1,17 @@
 from datetime import timedelta
 import os
+import logging
 from datetime import datetime, timedelta
 
 from airflow.decorators import dag, task
 from airflow.models.dag import ScheduleInterval
+from airflow.operators.bash import BashOperator
+from requests.api import request
 from airflow.providers.postgres.operators.postgres import PostgresOperator
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.operators.sql import SQLCheckOperator
+from airflow.models.connection import Connection
+from airflow import settings
 
 
 @dag(
@@ -44,8 +51,6 @@ def etl_pipeline():
         postgres_conn_id="postgres_default",
         sql="sql/create_employee_tbl.sql",
     )
-
-    import requests
 
     @task
     def get_data():
@@ -89,7 +94,7 @@ def etl_pipeline():
     def merge_data():
         query = """
                 delete
-                from "Employees" e using Employees_temp et
+                from "Employees" e using "Employees_temp" et
                 where e."Serial Number" = et."Serial Number";
 
                 insert into "Employees"
@@ -97,18 +102,20 @@ def etl_pipeline():
                 from "Employees_temp";
                 """
 
-        try:
-            postgres_hook = PostgresHook(postgres_conn_id="LOCAL")
-            conn = postgres_hook.get_conn()
-            cur = conn.cursor()
-            cur.execute(query)
-            conn.commit()
+        postgres_hook = PostgresHook(postgres_conn_id="postgres_default")
+        conn = postgres_hook.get_conn()
+        cur = conn.cursor()
+        cur.execute(query)
+        conn.commit()
 
-            return 0
-        except Exception as e:
-            return 1
-
-    setup_database >> get_data() >> merge_data()
+    (
+        create_connection()
+        >> setup_database
+        >> get_data()
+        >> check_employees_temp
+        >> merge_data()
+        >> check_employees
+    )
 
 
 dag = etl_pipeline()
