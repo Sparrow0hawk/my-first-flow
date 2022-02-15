@@ -20,6 +20,9 @@ from airflow import settings
     dagrun_timeout=timedelta(minutes=60),
 )
 def etl_pipeline():
+    def branch_func(ti):
+        return
+
     @task
     def create_connection():
 
